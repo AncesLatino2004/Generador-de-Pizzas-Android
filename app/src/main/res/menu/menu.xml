@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/addpizza"
+        android:title="Añadir Pizza"
+        android:icon="@android:drawable/ic_input_add"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/ordenar"
+        android:title="Ordenar"
+        android:icon="@android:drawable/ic_menu_sort_alphabetically"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/pi"
+        android:title="Pizzas Pi"
+        android:icon="@drawable/baseline_local_pizza_24"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/pc"
+        android:title="Pizzas Pc"
+        android:icon="@drawable/baseline_grain_24"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/pv"
+        android:title="Pizzas Pv"
+        android:icon="@drawable/baseline_energy_savings_leaf_24"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/to"
+        android:title="Pizzas To"
+        android:icon="@drawable/baseline_deblur_24"
+        app:showAsAction="always" />
+</menu>
