@@ -6,17 +6,16 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.room.Room
 import com.epia.pizzas2025.adapters.PizzaAdapter
 import com.epia.pizzas2025.room.Pizza
 import com.epia.pizzas2025.room.PizzaDao
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+
 class MainActivity : AppCompatActivity() {
 
     private lateinit var adapter: PizzaAdapter
@@ -24,10 +23,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var database: AppDatabase
     private lateinit var pizzaDao: PizzaDao
 
+    companion object {
+        const val REQUEST_CODE_ADD_PIZZA = 100
+        const val REQUEST_CODE_EDIT_PIZZA = 101
+        const val REQUEST_CODE_CHANGE_TAX = 200
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Inicializar la base de datos Room
         database = Room.databaseBuilder(
             applicationContext,
             AppDatabase::class.java, "pizza-database"
@@ -36,13 +42,35 @@ class MainActivity : AppCompatActivity() {
         pizzaDao = database.pizzaDao()
         setSupportActionBar(findViewById(R.id.menu))
 
-        adapter = PizzaAdapter(pizzaList)
+        // Inicializar el adaptador con la funcionalidad de eliminar y editar
+        adapter = PizzaAdapter(
+            pizzaList,
+            onDelete = { pizzaToDelete ->
+                CoroutineScope(Dispatchers.IO).launch {
+                    pizzaDao.deletePizza(pizzaToDelete)
+                    // Actualizar la lista después de eliminar
+                    val updatedPizzaList = pizzaDao.getAllPizzas()
+                    runOnUiThread {
+                        pizzaList.clear()
+                        pizzaList.addAll(updatedPizzaList)
+                        adapter.notifyDataSetChanged()
+                    }
+                }
+            },
+            onEdit = { pizzaToEdit ->
+                val intent = Intent(this, EditPizzaActivity::class.java)
+                intent.putExtra("PIZZA", pizzaToEdit)
+                startActivityForResult(intent, REQUEST_CODE_EDIT_PIZZA)
+            }
+        )
+
+        // Configurar el RecyclerView
         findViewById<RecyclerView>(R.id.recyclerview).apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = this@MainActivity.adapter
-
-
         }
+
+        // Cargar las pizzas desde la base de datos Room
         CoroutineScope(Dispatchers.IO).launch {
             val pizzasFromDb = pizzaDao.getAllPizzas()
             pizzaList.addAll(pizzasFromDb)
@@ -61,16 +89,22 @@ class MainActivity : AppCompatActivity() {
         when (item.itemId) {
             R.id.addpizza -> {
                 val intent = Intent(this, AddPizzaActivity::class.java)
-                startActivityForResult(intent, 100)  // Cambié el código de solicitud aquí
+                startActivityForResult(intent, REQUEST_CODE_ADD_PIZZA)
             }
+
             R.id.ordenar -> {
                 pizzaList.sortBy { it.description }
                 adapter.notifyDataSetChanged()
             }
-            R.id.pi -> adapter.updateData(pizzaList.filter { it.type == "Pi" })
-            R.id.pc -> adapter.updateData(pizzaList.filter { it.type == "Pc" })
-            R.id.pv -> adapter.updateData(pizzaList.filter { it.type == "Pv" })
-            R.id.to -> adapter.updateData(pizzaList.filter { it.type == "To" })
+
+            R.id.pi -> adapter.updateData(pizzaList.filter { it.type == "PI" })
+            R.id.pc -> adapter.updateData(pizzaList.filter { it.type == "PC" })
+            R.id.pv -> adapter.updateData(pizzaList.filter { it.type == "PV" })
+            R.id.to -> adapter.updateData(pizzaList.filter { it.type == "TO" })
+            R.id.configure_tax -> {
+                val intent = Intent(this, ConfigureTaxActivity::class.java)
+                startActivityForResult(intent, REQUEST_CODE_CHANGE_TAX) // Usar código 200 para IVA
+            }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -78,23 +112,65 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode == 100 && resultCode == Activity.RESULT_OK) {
-            // Recupera la pizza del Intent
-            val newPizza = data?.getParcelableExtra<Pizza>("NEW_PIZZA")
+        if (resultCode == Activity.RESULT_OK) {
+            when (requestCode) {
+                REQUEST_CODE_CHANGE_TAX -> {
+                    // Cambiar el IVA (requestCode 200)
+                    val newTax = data?.getFloatExtra("NEW_TAX", 21f) ?: return
 
-            newPizza?.let {
-                // Guardar la nueva pizza en la base de datos
-                CoroutineScope(Dispatchers.IO).launch {
-                    pizzaDao.insertPizza(it)
+                    // Actualizar los precios con el nuevo IVA
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val pizzas = pizzaDao.getAllPizzas()
+                        pizzas.forEach { pizza ->
+                            val updatedPriceWithTax = pizza.priceWithoutTax * (1 + newTax / 100)
+                            pizzaDao.updatePizza(pizza.copy(priceWithTax = updatedPriceWithTax))
+                        }
 
-                    // Agregar la pizza a la lista y actualizar el RecyclerView en el hilo principal
-                    runOnUiThread {
-                        pizzaList.add(it)
-                        adapter.notifyItemInserted(pizzaList.size - 1)
+                        // Actualizar la UI después de cambiar el IVA
+                        runOnUiThread {
+                            pizzaList.clear()
+                            pizzaList.addAll(pizzas)
+                            adapter.notifyDataSetChanged()
+                        }
+                    }
+                }
+
+                REQUEST_CODE_EDIT_PIZZA -> {
+                    // Si es la edición de una pizza (requestCode 101)
+                    val updatedPizza = data?.getParcelableExtra<Pizza>("UPDATED_PIZZA")
+
+                    updatedPizza?.let {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            pizzaDao.updatePizza(it)
+                            val updatedPizzaList = pizzaDao.getAllPizzas()
+                            runOnUiThread {
+                                pizzaList.clear()
+                                pizzaList.addAll(updatedPizzaList)
+                                adapter.notifyDataSetChanged()
+                            }
+                        }
+                    }
+                }
+
+                REQUEST_CODE_ADD_PIZZA -> {
+                    // Si es agregar una nueva pizza (requestCode 100)
+                    val newPizza = data?.getParcelableExtra<Pizza>("NEW_PIZZA")
+
+                    newPizza?.let {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            pizzaDao.insertPizza(it)
+                            val updatedPizzaList = pizzaDao.getAllPizzas()
+                            runOnUiThread {
+                                pizzaList.add(it)
+                                adapter.notifyItemInserted(pizzaList.size - 1)
+                                pizzaList.clear()
+                                pizzaList.addAll(updatedPizzaList)
+                                adapter.notifyDataSetChanged()
+                            }
+                        }
                     }
                 }
             }
         }
     }
-
 }

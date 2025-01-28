@@ -9,8 +9,11 @@ import androidx.recyclerview.widget.RecyclerView
 import com.epia.pizzas2025.R
 import com.epia.pizzas2025.room.Pizza
 
-class PizzaAdapter(private var pizzaList: MutableList<Pizza>) :
-    RecyclerView.Adapter<PizzaAdapter.PizzaViewHolder>() {
+class PizzaAdapter(
+    private var pizzaList: MutableList<Pizza>,
+    private val onDelete: (Pizza) -> Unit,
+    private val onEdit: (Pizza) -> Unit // Nuevo callback
+) : RecyclerView.Adapter<PizzaAdapter.PizzaViewHolder>() {
 
     class PizzaViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvReferencia: TextView = itemView.findViewById(R.id.Referencia)
@@ -35,16 +38,19 @@ class PizzaAdapter(private var pizzaList: MutableList<Pizza>) :
         holder.tvType.text = pizza.type
         holder.tvPriceWithoutTax.text = pizza.priceWithoutTax.toString()
         holder.tvPriceWithTax.text = pizza.priceWithTax.toString()
-
+        holder.tvReferencia.setOnClickListener {
+            onEdit(pizza) // Llamar al callback para editar
+        }
         holder.btnDelete.setOnClickListener {
+            val removedPizza = pizzaList[position]
             pizzaList.removeAt(position)
             notifyItemRemoved(position)
+            onDelete(removedPizza) // Llama al callback para eliminarla de Room
         }
     }
 
     override fun getItemCount(): Int = pizzaList.size
 
-    // Método para actualizar los datos
     fun updateData(newList: List<Pizza>) {
         pizzaList.clear()
         pizzaList.addAll(newList)

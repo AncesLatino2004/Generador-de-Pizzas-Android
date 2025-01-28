@@ -42,7 +42,8 @@ class AddPizzaActivity : AppCompatActivity() {
             // Validaciones básicas
             if (type.isBlank() || description.isBlank() || priceWithoutTax == null || reference.isBlank()) {
                 // Muestra un mensaje de error si falta algún campo
-                Toast.makeText(this, "Por favor, completa todos los campos", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Por favor, completa todos los campos", Toast.LENGTH_SHORT)
+                    .show()
                 return@setOnClickListener
             }
 
@@ -56,7 +57,8 @@ class AddPizzaActivity : AppCompatActivity() {
             }
 
             if (!reference.startsWith(prefix ?: "")) {
-                Toast.makeText(this, "La referencia debe comenzar con $prefix", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "La referencia debe comenzar con $prefix", Toast.LENGTH_SHORT)
+                    .show()
                 return@setOnClickListener
             }
 
@@ -77,7 +79,11 @@ class AddPizzaActivity : AppCompatActivity() {
                 val existingPizza = database.pizzaDao().getPizzaByReference(reference)
                 if (existingPizza != null) {
                     runOnUiThread {
-                        Toast.makeText(this@AddPizzaActivity, "La referencia ya existe", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@AddPizzaActivity,
+                            "La referencia ya existe",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     return@launch
                 }
@@ -85,18 +91,17 @@ class AddPizzaActivity : AppCompatActivity() {
                 // Si la referencia no existe, continúa guardando la pizza
                 database.pizzaDao().insertPizza(pizza)
                 runOnUiThread {
+                    // Pasar el resultado de vuelta a la actividad principal
                     val resultIntent = Intent()
                     resultIntent.putExtra("NEW_PIZZA", pizza)
                     setResult(Activity.RESULT_OK, resultIntent)
                     finish()
                 }
             }
-
         }
     }
 
-
-    private fun calculatePriceWithTax(priceWithoutTax: Double): Double {
+        private fun calculatePriceWithTax(priceWithoutTax: Double): Double {
         val taxRate = 0.21 // Ejemplo: 21% de IVA
         return priceWithoutTax * (1 + taxRate)
     }

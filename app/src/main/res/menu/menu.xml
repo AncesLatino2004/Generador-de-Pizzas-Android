@@ -20,6 +20,7 @@
         android:icon="@drawable/baseline_local_pizza_24"
         app:showAsAction="always" />
 
+
     <item
         android:id="@+id/pc"
         android:title="Pizzas Pc"
@@ -36,5 +37,11 @@
         android:id="@+id/to"
         android:title="Pizzas To"
         android:icon="@drawable/baseline_deblur_24"
+        app:showAsAction="always" />
+
+    <item
+        android:id="@+id/configure_tax"
+        android:icon="@drawable/baseline_percent_24"
+        android:title="Configurar IVA"
         app:showAsAction="always" />
 </menu>

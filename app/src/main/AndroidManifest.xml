@@ -12,14 +12,20 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Pizzas2025"
         tools:targetApi="31" >
+
         <activity android:name=".AddPizzaActivity" />
+
+        <!-- Declaración de EditPizzaActivity -->
+        <activity android:name=".EditPizzaActivity" />
+
+        <activity android:name=".ConfigureTaxActivity" />
+
 
         <activity
             android:name=".MainActivity"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
