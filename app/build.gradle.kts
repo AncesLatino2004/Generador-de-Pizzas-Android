@@ -43,6 +43,9 @@ dependencies {
     implementation("androidx.room:room-runtime:2.5.1")
     kapt("androidx.room:room-compiler:2.5.1")
     implementation("androidx.room:room-ktx:2.5.1")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.0")
+
 
     // Core dependencies
     implementation("androidx.core:core-ktx:1.9.0")

@@ -7,20 +7,14 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Spinner
 import androidx.appcompat.app.AppCompatActivity
-import com.epia.pizzas2025.room.Pizza
-import android.content.Context
-import android.content.SharedPreferences
 import android.widget.Toast
 import androidx.room.Room
+import com.epia.pizzas2025.room.Pizza
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class AddPizzaActivity : AppCompatActivity() {
-
-    private lateinit var sharedPreferences: SharedPreferences
-    private val PREF_NAME = "PizzaPreferences"
-    private val REFERENCE_KEY = "lastReferenceNumber"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,31 +28,32 @@ class AddPizzaActivity : AppCompatActivity() {
 
         btnSave.setOnClickListener {
             // Obtener los datos del usuario
-            val type = spinner.selectedItem.toString()
-            val description = etDescription.text.toString()
-            val priceWithoutTax = etPrice.text.toString().toDoubleOrNull()
-            val reference = etReference.text.toString()
+            val type = spinner.selectedItem?.toString()?.trim() ?: ""
+            val description = etDescription.text?.toString()?.trim() ?: ""
+            val priceWithoutTax = etPrice.text?.toString()?.toDoubleOrNull()
+            val reference = etReference.text?.toString()?.trim() ?: ""
 
             // Validaciones básicas
             if (type.isBlank() || description.isBlank() || priceWithoutTax == null || reference.isBlank()) {
-                // Muestra un mensaje de error si falta algún campo
-                Toast.makeText(this, "Por favor, completa todos los campos", Toast.LENGTH_SHORT)
-                    .show()
+                Toast.makeText(this, "Por favor, completa todos los campos", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            // Validar que la referencia sea coherente con el tipo
+            // Validar el tipo antes de usarlo
             val prefix = when (type) {
                 "PIZZA" -> "PI"
                 "PIZZA VEGANA" -> "PV"
                 "PIZZA CELIACA" -> "PC"
                 "TOPPING" -> "TO"
-                else -> null
+                else -> {
+                    Toast.makeText(this, "Tipo de pizza no válido", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
             }
 
-            if (!reference.startsWith(prefix ?: "")) {
-                Toast.makeText(this, "La referencia debe comenzar con $prefix", Toast.LENGTH_SHORT)
-                    .show()
+            // Validar que la referencia comience con el prefijo correcto
+            if (!reference.startsWith(prefix)) {
+                Toast.makeText(this, "La referencia debe comenzar con $prefix", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -66,10 +61,9 @@ class AddPizzaActivity : AppCompatActivity() {
             val priceWithTax = calculatePriceWithTax(priceWithoutTax)
 
             // Crear el objeto Pizza
-            val pizza = Pizza(reference, type, description, priceWithoutTax, priceWithTax)
+            val pizza = Pizza(reference, description, type, priceWithoutTax, priceWithTax)
 
-            // Guardar la pizza en la base de datos
-            // Verificar si la referencia ya existe en la base de datos
+            // Guardar en la base de datos de manera segura
             CoroutineScope(Dispatchers.IO).launch {
                 val database = Room.databaseBuilder(
                     applicationContext,
@@ -79,19 +73,14 @@ class AddPizzaActivity : AppCompatActivity() {
                 val existingPizza = database.pizzaDao().getPizzaByReference(reference)
                 if (existingPizza != null) {
                     runOnUiThread {
-                        Toast.makeText(
-                            this@AddPizzaActivity,
-                            "La referencia ya existe",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(this@AddPizzaActivity, "La referencia ya existe", Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
 
-                // Si la referencia no existe, continúa guardando la pizza
+                // Insertar la pizza en la base de datos
                 database.pizzaDao().insertPizza(pizza)
                 runOnUiThread {
-                    // Pasar el resultado de vuelta a la actividad principal
                     val resultIntent = Intent()
                     resultIntent.putExtra("NEW_PIZZA", pizza)
                     setResult(Activity.RESULT_OK, resultIntent)
@@ -101,8 +90,8 @@ class AddPizzaActivity : AppCompatActivity() {
         }
     }
 
-        private fun calculatePriceWithTax(priceWithoutTax: Double): Double {
-        val taxRate = 0.21 // Ejemplo: 21% de IVA
+    private fun calculatePriceWithTax(priceWithoutTax: Double): Double {
+        val taxRate = 0.21 // IVA 21%
         return priceWithoutTax * (1 + taxRate)
     }
 }

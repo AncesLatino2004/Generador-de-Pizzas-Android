@@ -22,6 +22,9 @@ class MainActivity : AppCompatActivity() {
     private val pizzaList = mutableListOf<Pizza>()
     private lateinit var database: AppDatabase
     private lateinit var pizzaDao: PizzaDao
+    private var isAscending = true // Estado de orden (A-Z o Z-A)
+    private var selectedFilter: String? = null // Filtro actual
+    private var originalList: List<Pizza> = listOf() // Lista completa sin filtros
 
     companion object {
         const val REQUEST_CODE_ADD_PIZZA = 100
@@ -74,6 +77,7 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             val pizzasFromDb = pizzaDao.getAllPizzas()
             pizzaList.addAll(pizzasFromDb)
+            originalList = pizzasFromDb // Asignar las pizzas a originalList
             runOnUiThread {
                 adapter.notifyDataSetChanged()
             }
@@ -85,6 +89,30 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    private fun updateList() {
+        var filteredList = originalList
+
+        // Aplicar filtro de tipo si hay uno seleccionado
+        selectedFilter?.let { filter ->
+            filteredList = filteredList.filter { it.type == filter }
+        }
+
+        // Aplicar orden (A-Z o Z-A)
+        filteredList = if (isAscending) {
+            filteredList.sortedBy { it.description }
+        } else {
+            filteredList.sortedByDescending { it.description }
+        }
+
+        // Verificar si filteredList está vacía
+        if (filteredList.isEmpty()) {
+            println("No hay pizzas disponibles para el filtro seleccionado.")
+        }
+
+        // Actualizar el adaptador con la lista filtrada y ordenada
+        adapter.updateData(filteredList)
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.addpizza -> {
@@ -93,17 +121,34 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.ordenar -> {
-                pizzaList.sortBy { it.description }
-                adapter.notifyDataSetChanged()
+                isAscending = !isAscending
+                updateList() // Aplicar orden y filtro a la vez
             }
 
-            R.id.pi -> adapter.updateData(pizzaList.filter { it.type == "PI" })
-            R.id.pc -> adapter.updateData(pizzaList.filter { it.type == "PC" })
-            R.id.pv -> adapter.updateData(pizzaList.filter { it.type == "PV" })
-            R.id.to -> adapter.updateData(pizzaList.filter { it.type == "TO" })
+            R.id.pi -> {
+
+                selectedFilter = if (selectedFilter == "PIZZA") null else "PIZZA"
+                updateList() // Aplicar filtro y orden
+            }
+
+            R.id.pc -> {
+                selectedFilter = if (selectedFilter == "PIZZA CELIACA") null else "PIZZA CELIACA"
+                updateList() // Aplicar filtro y orden
+            }
+
+            R.id.pv -> {
+                selectedFilter = if (selectedFilter == "PIZZA VEGANA") null else "PIZZA VEGANA"
+                updateList() // Aplicar filtro y orden
+            }
+
+            R.id.to -> {
+                selectedFilter = if (selectedFilter == "TOPPING") null else "TOPPING"
+                updateList() // Aplicar filtro y orden
+            }
+
             R.id.configure_tax -> {
                 val intent = Intent(this, ConfigureTaxActivity::class.java)
-                startActivityForResult(intent, REQUEST_CODE_CHANGE_TAX) // Usar código 200 para IVA
+                startActivityForResult(intent, REQUEST_CODE_CHANGE_TAX)
             }
         }
         return super.onOptionsItemSelected(item)
@@ -158,18 +203,25 @@ class MainActivity : AppCompatActivity() {
 
                     newPizza?.let {
                         CoroutineScope(Dispatchers.IO).launch {
+                            // Insertar la nueva pizza en la base de datos
                             pizzaDao.insertPizza(it)
+
+                            // Obtener la lista actualizada de pizzas desde la base de datos
                             val updatedPizzaList = pizzaDao.getAllPizzas()
+
+                            // Actualizar la lista original (originalList) con las pizzas actualizadas
+                            originalList = updatedPizzaList
+
+                            // Actualizar la lista del RecyclerView en el hilo principal
                             runOnUiThread {
-                                pizzaList.add(it)
-                                adapter.notifyItemInserted(pizzaList.size - 1)
-                                pizzaList.clear()
-                                pizzaList.addAll(updatedPizzaList)
-                                adapter.notifyDataSetChanged()
+                                pizzaList.clear() // Limpiar la lista antes de agregar las pizzas actualizadas
+                                pizzaList.addAll(updatedPizzaList) // Agregar las pizzas actualizadas
+                                adapter.notifyDataSetChanged() // Notificar al adaptador sobre los cambios
                             }
                         }
                     }
                 }
+
             }
         }
     }

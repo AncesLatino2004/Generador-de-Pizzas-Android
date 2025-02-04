@@ -2,4 +2,9 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="ColorPI">#FFA200</color>
+    <color name="ColorPV">#3E7C00</color>
+    <color name="ColorPC">#EFFF0F</color>
+    <color name="ColorTO">#F83B3B</color>
+
 </resources>
